@@ -139,9 +139,6 @@ load_palette_loop:
 ; ------------------------------------------------------------
 
 forever:
-
-    ; Como este exemplo não tem lógica de jogo,
-    ; o programa fica preso neste loop infinito.
     JMP forever
 
 ; ------------------------------------------------------------
@@ -152,7 +149,8 @@ forever:
 ; ------------------------------------------------------------
 
 palette_data:
-    .byte $21, $01, $11, $31
+    .byte $21, $01, $11, $31 ; Background
+    .byte $21, $0F, $16, $30 ; Sprite
 
 background_colors:
     ; Cores que serão usadas na animação
