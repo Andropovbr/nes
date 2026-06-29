@@ -192,7 +192,7 @@ IRQ:
 
 .segment "CHARS"
 
-; Tile 0: quadrado simples 8x8
+; Tile 0: bolinha simples 8x8
 ; Cada tile usa 16 bytes:
 ; - 8 bytes para o bitplane 0
 ; - 8 bytes para o bitplane 1

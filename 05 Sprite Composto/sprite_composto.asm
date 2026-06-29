@@ -134,20 +134,22 @@ load_sprite_palette:
     BNE load_sprite_palette ; Se não, continua
 
 ; ------------------------------------------------------------
-; CONFIGURA PRIMEIRO SPRITE
+; COPIA O SPRITE COMPOSTO PARA A OAM EM RAM
 ; ------------------------------------------------------------
 
 load_sprite:
 
-    LDX #$00
+    LDX #$00                 ; Índice para percorrer os dados do sprite
 
 copy_biker:
-    LDA biker_sprite, x
-    STA $0200, x
 
-    INX
-    CPX #$20
-    BNE copy_biker
+    LDA biker_sprite, x      ; Lê um byte da tabela do sprite
+    STA $0200, x             ; Copia para a OAM em RAM (a partir de $0200)
+
+    INX                      ; Avança para o próximo byte
+
+    CPX #$20                 ; Já copiou 32 bytes (8 sprites × 4 bytes)?
+    BNE copy_biker           ; Se não, continua copiando
 
 ; ------------------------------------------------------------
 ; HABILITA PPU
