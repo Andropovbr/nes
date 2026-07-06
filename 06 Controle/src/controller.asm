@@ -1,12 +1,12 @@
 ; ------------------------------------------------------------
-; LÊ CONTROLE 1
+; LÊ O ESTADO DO CONTROLE 1
 ; ------------------------------------------------------------
 ;
-; Ordem lida pelo NES:
+; Ordem em que o NES fornece os botões:
 ;
 ; A, B, Select, Start, Cima, Baixo, Esquerda, Direita
 ;
-; Resultado em controller1:
+; Após a leitura, a variável controller1 fica organizada assim:
 ;
 ; bit 0 = Direita
 ; bit 1 = Esquerda
@@ -20,24 +20,26 @@
 
 read_controller:
 
-    LDA #$01
-    STA $4016
+    LDA #$01              ; Ativa o strobe do controle
+    STA $4016             ; Faz o controle capturar o estado atual dos botões
+
+    LDA #$00              ; Desativa o strobe
+    STA $4016             ; A partir daqui os botões serão lidos um a um
 
     LDA #$00
-    STA $4016
+    STA controller1       ; Limpa a variável que armazenará os botões
 
-    LDA #$00
-    STA controller1
-
-    LDX #$08
+    LDX #$08              ; Serão lidos os 8 botões do controle
 
 read_controller_loop:
 
-    LDA $4016
-    LSR A
-    ROL controller1
+    LDA $4016             ; Lê o próximo botão
 
-    DEX
-    BNE read_controller_loop
+    LSR A                 ; Move o bit lido para o Carry
 
-    RTS
+    ROL controller1       ; Rotaciona o Carry para dentro de controller1
+
+    DEX                   ; Decrementa o contador
+    BNE read_controller_loop ; Continua até ler os 8 botões
+
+    RTS                   ; Retorna ao programa principal

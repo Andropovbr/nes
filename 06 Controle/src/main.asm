@@ -4,16 +4,16 @@
 
 .segment "HEADER"
 
-    .byte "NES"
-    .byte $1A
-    .byte $02
-    .byte $01
-    .byte %00000000
-    .byte $00
-    .byte $00
-    .byte $00
-    .byte $00
-    .byte $00, $00, $00, $00, $00
+    .byte "NES"            ; Identifica o arquivo como uma ROM NES
+    .byte $1A              ; Byte obrigatório do formato iNES
+    .byte $02              ; 2 bancos de PRG ROM = 32 KB
+    .byte $01              ; 1 banco de CHR ROM = 8 KB
+    .byte %00000000        ; Mapper 0, mirroring horizontal
+    .byte $00              ; Flags 7
+    .byte $00              ; Flags 8
+    .byte $00              ; Flags 9
+    .byte $00              ; Flags 10
+    .byte $00, $00, $00, $00, $00 ; Preenchimento do header
 
 ; ------------------------------------------------------------
 ; VARIÁVEIS
@@ -21,7 +21,7 @@
 
 .segment "ZEROPAGE"
 
-.include "zeropage.inc"
+.include "zeropage.inc"    ; Declara variáveis rápidas na página zero
 
 ; ------------------------------------------------------------
 ; RESET / INICIALIZAÇÃO
@@ -31,69 +31,69 @@
 
 RESET:
 
-    SEI
-    CLD
+    SEI                    ; Desabilita interrupções IRQ
+    CLD                    ; Desabilita modo decimal do 6502
 
     LDX #$40
-    STX $4017
+    STX $4017              ; Desabilita IRQ do APU frame counter
 
     LDX #$FF
-    TXS
+    TXS                    ; Inicializa a pilha em $01FF
 
-    INX
+    INX                    ; X passa de $FF para $00
 
-    STX $2000
-    STX $2001
-    STX $4010
+    STX $2000              ; Desabilita NMI
+    STX $2001              ; Desabilita renderização
+    STX $4010              ; Desabilita IRQ do DMC
 
 vblankwait1:
-    BIT $2002
-    BPL vblankwait1
+    BIT $2002              ; Verifica o status da PPU
+    BPL vblankwait1        ; Espera entrar no primeiro VBlank
 
 clearmem:
-    LDA #$00
+    LDA #$00               ; Valor usado para limpar a RAM
 
-    STA $0000, x
-    STA $0100, x
-    STA $0300, x
-    STA $0400, x
-    STA $0500, x
-    STA $0600, x
-    STA $0700, x
+    STA $0000, x           ; Limpa página $0000
+    STA $0100, x           ; Limpa página da pilha
+    STA $0300, x           ; Limpa RAM
+    STA $0400, x           ; Limpa RAM
+    STA $0500, x           ; Limpa RAM
+    STA $0600, x           ; Limpa RAM
+    STA $0700, x           ; Limpa RAM
 
-    LDA #$FE
-    STA $0200, x
+    LDA #$FE               ; Y = $FE esconde sprites fora da tela
+    STA $0200, x           ; Limpa/Oculta OAM shadow em RAM
 
-    INX
-    BNE clearmem
+    INX                    ; Avança para o próximo byte
+    BNE clearmem           ; Repete até X voltar para zero
 
 vblankwait2:
-    BIT $2002
-    BPL vblankwait2
+    BIT $2002              ; Verifica novamente o status da PPU
+    BPL vblankwait2        ; Espera o segundo VBlank
 
-    JSR load_palettes
-    JSR load_biker_sprite
+    JSR load_palettes      ; Carrega as paletas na PPU
+    JSR load_biker_sprite  ; Copia os dados iniciais do sprite
 
     LDA #$80
-    STA player_x
+    STA player_x           ; Posição X inicial do personagem
 
     LDA #$60
-    STA player_y
+    STA player_y           ; Posição Y inicial do personagem
 
     LDA #$00
-    STA anim_counter
-    STA anim_frame
-    STA player_moving
+    STA anim_counter       ; Zera contador da animação
+    STA anim_frame         ; Zera frame atual da animação
+    STA player_moving      ; Começa com o personagem parado
 
-    JSR update_biker_sprite
+    JSR update_biker_sprite ; Atualiza a OAM shadow com posição/animação
 
 enable_ppu:
 
     LDA #%10000000
-    STA $2000
+    STA $2000              ; Liga NMI ao entrar em VBlank
 
     LDA #%00010000
-    STA $2001
+    STA $2001              ; Liga renderização de sprites
 
 ; ------------------------------------------------------------
 ; CÓDIGO PRINCIPAL
@@ -104,28 +104,28 @@ enable_ppu:
 forever:
 
 wait_frame:
-    LDA frame_ready
-    BEQ wait_frame
+    LDA frame_ready        ; Verifica se a NMI marcou um novo frame
+    BEQ wait_frame         ; Enquanto não houver frame novo, espera
 
     LDA #$00
-    STA frame_ready
+    STA frame_ready        ; Consome o frame atual
 
-    JSR read_controller
-    JSR update_player
-    JSR update_player_animation
-    JSR update_biker_sprite
+    JSR read_controller    ; Lê o controle
+    JSR update_player      ; Atualiza posição/movimento do jogador
+    JSR update_player_animation ; Atualiza frame da animação
+    JSR update_biker_sprite ; Atualiza sprites na OAM shadow
 
-    JMP forever
+    JMP forever            ; Repete para o próximo frame
 
 ; ------------------------------------------------------------
 ; ARQUIVOS DO PROJETO
 ; ------------------------------------------------------------
 
-.include "ppu.asm"
-.include "controller.asm"
-.include "player.asm"
-.include "palettes.asm"
-.include "biker.asm"
+.include "ppu.asm"         ; Rotinas relacionadas à PPU/OAM
+.include "controller.asm"  ; Leitura do controle
+.include "player.asm"      ; Movimento e animação do personagem
+.include "palettes.asm"    ; Dados e carregamento de paletas
+.include "biker.asm"       ; Dados do sprite composto
 
 ; ------------------------------------------------------------
 ; NMI
@@ -134,15 +134,15 @@ wait_frame:
 NMI:
 
     LDA #$00
-    STA $2003
+    STA $2003              ; Define o início da OAM como $00
 
     LDA #$02
-    STA $4014
+    STA $4014              ; Faz DMA de $0200-$02FF para a OAM
 
     LDA #$01
-    STA frame_ready
+    STA frame_ready        ; Marca que um novo frame pode ser processado
 
-    RTI
+    RTI                    ; Retorna da interrupção
 
 ; ------------------------------------------------------------
 ; IRQ
@@ -150,7 +150,7 @@ NMI:
 
 IRQ:
 
-    RTI
+    RTI                    ; IRQ não usada neste exemplo
 
 ; ------------------------------------------------------------
 ; VETORES
@@ -158,9 +158,9 @@ IRQ:
 
 .segment "VECTORS"
 
-    .word NMI
-    .word RESET
-    .word IRQ
+    .word NMI              ; Vetor da NMI
+    .word RESET            ; Vetor de RESET
+    .word IRQ              ; Vetor da IRQ/BRK
 
 ; ------------------------------------------------------------
 ; CHR ROM
@@ -168,4 +168,4 @@ IRQ:
 
 .segment "CHARS"
 
-    .incbin "player.chr"
+    .incbin "player.chr"   ; Inclui os tiles gráficos do personagem
