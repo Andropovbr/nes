@@ -10,3 +10,5 @@ anim_frame:         .res 1    ; Frame atual da animação dos pés
 
 player_moving:      .res 1    ; 0 = parado, 1 = em movimento
 player_direction:   .res 1    ; 0 = direita, 1 = esquerda
+
+collision:          .res 1    ; 0 = sem colisão, 1 = houve colisão

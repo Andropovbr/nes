@@ -15,81 +15,189 @@ PLAYER_MAX_Y = $D8       ; 240 - 24 pixels
 
 update_player:
 
-    LDA #$00                    ; Começa assumindo que o jogador está parado
-    STA player_moving           ; player_moving = 0
+    LDA #$00
+    STA player_moving           ; Começa assumindo que não houve movimento
 
+
+; ------------------------------------------------------------
+; MOVIMENTO PARA A DIREITA
+; ------------------------------------------------------------
 
 check_right:
 
-    LDA controller1             ; Carrega os botões pressionados
-    AND #%00000001              ; Testa o bit 0: Direita
-    BEQ check_left              ; Se não pressionou Direita, testa Esquerda
+    LDA controller1
+    AND #%00000001
+    BEQ check_left
 
-    LDA player_x                ; Carrega a posição horizontal
-    CMP #PLAYER_MAX_X           ; Compara com o limite direito
-    BCS check_left              ; Se player_x >= limite, não movimenta
+    ; Mesmo bloqueado, o personagem passa a olhar para a direita.
 
-    INC player_x                ; Move 1 pixel para a direita
-
-    LDA #$01                    ; Marca que o jogador realmente se moveu
-    STA player_moving
-
-    LDA #$00                    ; Direção 0 = direita
+    LDA #$00
     STA player_direction
 
+    ; Verifica o limite direito da tela.
+
+    LDA player_x
+    CMP #PLAYER_MAX_X
+    BCS check_left
+
+    ; Tenta mover um pixel.
+
+    INC player_x
+
+    ; Verifica se a nova posição encosta na cerca.
+
+    JSR check_fence_collision
+
+    LDA collision
+    BNE undo_move_right
+
+    ; Movimento aceito.
+
+    LDA #$01
+    STA player_moving
+
+    JMP check_left
+
+
+undo_move_right:
+
+    DEC player_x                ; Desfaz o movimento
+
+    JMP check_left
+
+
+; ------------------------------------------------------------
+; MOVIMENTO PARA A ESQUERDA
+; ------------------------------------------------------------
 
 check_left:
 
-    LDA controller1             ; Carrega os botões pressionados
-    AND #%00000010              ; Testa o bit 1: Esquerda
-    BEQ check_down              ; Se não pressionou Esquerda, testa Baixo
+    LDA controller1
+    AND #%00000010
+    BEQ check_down
 
-    LDA player_x                ; Carrega a posição horizontal
-    CMP #PLAYER_MIN_X           ; Compara com o limite esquerdo
-    BEQ check_down              ; Se já está no limite, não movimenta
+    ; Mesmo bloqueado, olha para a esquerda.
 
-    DEC player_x                ; Move 1 pixel para a esquerda
+    LDA #$01
+    STA player_direction
 
-    LDA #$01                    ; Marca que o jogador realmente se moveu
+    ; Verifica o limite esquerdo da tela.
+
+    LDA player_x
+    CMP #PLAYER_MIN_X
+    BEQ check_down
+
+    ; Tenta mover um pixel.
+
+    DEC player_x
+
+    ; Verifica a nova posição.
+
+    JSR check_fence_collision
+
+    LDA collision
+    BNE undo_move_left
+
+    ; Movimento aceito.
+
+    LDA #$01
     STA player_moving
-    STA player_direction        ; Direção 1 = esquerda
 
+    JMP check_down
+
+
+undo_move_left:
+
+    INC player_x                ; Desfaz o movimento
+
+    JMP check_down
+
+
+; ------------------------------------------------------------
+; MOVIMENTO PARA BAIXO
+; ------------------------------------------------------------
 
 check_down:
 
-    LDA controller1             ; Carrega os botões pressionados
-    AND #%00000100              ; Testa o bit 2: Baixo
-    BEQ check_up                ; Se não pressionou Baixo, testa Cima
+    LDA controller1
+    AND #%00000100
+    BEQ check_up
 
-    LDA player_y                ; Carrega a posição vertical
-    CMP #PLAYER_MAX_Y           ; Compara com o limite inferior
-    BCS check_up                ; Se player_y >= limite, não movimenta
+    ; Verifica o limite inferior da tela.
 
-    INC player_y                ; Move 1 pixel para baixo
+    LDA player_y
+    CMP #PLAYER_MAX_Y
+    BCS check_up
 
-    LDA #$01                    ; Marca que o jogador realmente se moveu
+    ; Tenta mover um pixel.
+
+    INC player_y
+
+    ; Verifica a nova posição.
+
+    JSR check_fence_collision
+
+    LDA collision
+    BNE undo_move_down
+
+    ; Movimento aceito.
+
+    LDA #$01
     STA player_moving
 
+    JMP check_up
+
+
+undo_move_down:
+
+    DEC player_y                ; Desfaz o movimento
+
+    JMP check_up
+
+
+; ------------------------------------------------------------
+; MOVIMENTO PARA CIMA
+; ------------------------------------------------------------
 
 check_up:
 
-    LDA controller1             ; Carrega os botões pressionados
-    AND #%00001000              ; Testa o bit 3: Cima
-    BEQ update_player_done      ; Se não pressionou Cima, termina
+    LDA controller1
+    AND #%00001000
+    BEQ update_player_done
 
-    LDA player_y                ; Carrega a posição vertical
-    CMP #PLAYER_MIN_Y           ; Compara com o limite superior
-    BEQ update_player_done      ; Se já está no limite, não movimenta
+    ; Verifica o limite superior da tela.
 
-    DEC player_y                ; Move 1 pixel para cima
+    LDA player_y
+    CMP #PLAYER_MIN_Y
+    BEQ update_player_done
 
-    LDA #$01                    ; Marca que o jogador realmente se moveu
+    ; Tenta mover um pixel.
+
+    DEC player_y
+
+    ; Verifica a nova posição.
+
+    JSR check_fence_collision
+
+    LDA collision
+    BNE undo_move_up
+
+    ; Movimento aceito.
+
+    LDA #$01
     STA player_moving
+
+    JMP update_player_done
+
+
+undo_move_up:
+
+    INC player_y                 ; Desfaz o movimento
 
 
 update_player_done:
 
-    RTS                         ; Retorna ao loop principal
+    RTS
 
 ; ------------------------------------------------------------
 ; ATUALIZA ANIMAÇÃO DO JOGADOR

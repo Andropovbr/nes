@@ -135,6 +135,7 @@ wait_frame:
 
 .include "ppu.asm"         ; Rotinas relacionadas à PPU/OAM
 .include "controller.asm"  ; Leitura do controle
+.include "collision.asm"   ; Colisão com a cerca
 .include "player.asm"      ; Movimento e animação do personagem
 .include "palettes.asm"    ; Dados e carregamento de paletas
 .include "biker.asm"       ; Dados do sprite composto
