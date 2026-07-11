@@ -8,7 +8,7 @@
 ; $11 = Azul claro
 ; $31 = Branco
 
-bg_palette:
+bg_grass:
 
     .byte $0F, $01, $11, $31
 

@@ -99,15 +99,15 @@ vblankwait2:
 
     LDX #$00             ; Índice da tabela
 
-load_bg_palette:
+load_bg_grass:
 
-    LDA bg_palette, x    ; Lê uma cor da paleta
+    LDA bg_grass, x    ; Lê uma cor da paleta
     STA $2007            ; Escreve na memória da PPU
 
     INX                  ; Próxima cor
 
     CPX #$04             ; Já copiou 4 cores?
-    BNE load_bg_palette  ; Se não, continua
+    BNE load_bg_grass  ; Se não, continua
 
 ; ------------------------------------------------------------
 ; CARREGA PALETA DE SPRITES
@@ -187,7 +187,7 @@ forever:
 ; Background Palette 0 -> $3F00-$3F03
 ; Sprite Palette 0     -> $3F10-$3F13
 
-bg_palette:
+bg_grass:
     .byte $0F, $01, $11, $31
 
 sprite_palette:

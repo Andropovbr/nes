@@ -71,11 +71,10 @@ vblankwait2:
     BIT $2002              ; Verifica novamente o status da PPU
     BPL vblankwait2        ; Espera o segundo VBlank
 
-    JSR load_palettes          ; Carrega paletas de BG e sprites
-
-    JSR clear_nametable        ; Limpa toda a área do background
-    JSR clear_attribute_table  ; Faz toda a tela usar a paleta BG 0
-    JSR draw_grass             ; Desenha o gramado na parte superior
+    JSR load_palettes       ; Carrega as paletas de cores na PPU
+    JSR clear_nametable     ; Limpa o mapa de tiles na PPU
+    JSR draw_background     ; Desenha o gramado e o chão na PPU
+    JSR load_bg_attributes  ; Carrega os atributos do mapa de tiles na PPU
 
     JSR load_biker_sprite      ; Copia os dados iniciais do personagem
 

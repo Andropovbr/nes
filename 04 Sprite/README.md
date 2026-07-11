@@ -51,7 +51,7 @@ O NES possui paletas separadas para background e sprites.
 Neste exemplo são utilizadas:
 
 ```asm
-bg_palette:
+bg_grass:
     .byte $0F, $01, $11, $31
 
 sprite_palette:

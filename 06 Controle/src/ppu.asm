@@ -4,7 +4,7 @@
 
 load_palettes:
 
-    JSR load_bg_palette            ; Carrega a paleta do background
+    JSR load_bg_grass            ; Carrega a paleta do background
     JSR load_sprite_palette        ; Carrega a paleta dos sprites
 
     RTS                            ; Retorna para quem chamou
@@ -13,7 +13,7 @@ load_palettes:
 ; CARREGA PALETA DE BACKGROUND
 ; ------------------------------------------------------------
 
-load_bg_palette:
+load_bg_grass:
 
     LDA $2002                      ; Reseta o latch de endereço da PPU
 
@@ -25,14 +25,14 @@ load_bg_palette:
 
     LDX #$00                       ; X será o índice da paleta
 
-load_bg_palette_loop:
+load_bg_grass_loop:
 
-    LDA bg_palette, x              ; Lê uma cor da paleta de background
+    LDA bg_grass, x              ; Lê uma cor da paleta de background
     STA $2007                      ; Escreve essa cor na memória da PPU
 
     INX                            ; Avança para a próxima cor
     CPX #$04                       ; Já carregou 4 cores?
-    BNE load_bg_palette_loop       ; Se não, continua o loop
+    BNE load_bg_grass_loop       ; Se não, continua o loop
 
     RTS                            ; Retorna para quem chamou
 

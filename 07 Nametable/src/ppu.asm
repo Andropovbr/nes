@@ -4,37 +4,41 @@
 
 load_palettes:
 
-    JSR load_bg_palette            ; Carrega a paleta do background
+    JSR load_bg_palettes          ; Carrega as paletas de background
     JSR load_sprite_palette        ; Carrega a paleta dos sprites
 
     RTS                            ; Retorna para quem chamou
 
 ; ------------------------------------------------------------
-; CARREGA PALETA DE BACKGROUND
+; CARREGA PALETAS DE BACKGROUND
+; ------------------------------------------------------------
+;
+; $3F00-$3F03 = paleta 0: gramado
+; $3F04-$3F07 = paleta 1: chão
 ; ------------------------------------------------------------
 
-load_bg_palette:
+load_bg_palettes:
 
-    LDA $2002                      ; Reseta o latch de endereço da PPU
+    LDA $2002                    ; Reseta o latch da PPU
 
-    LDA #$3F                       ; Primeiro byte do endereço $3F00
-    STA $2006                      ; Escreve byte alto do endereço da PPU
+    LDA #$3F
+    STA $2006                    ; Byte alto de $3F00
 
-    LDA #$00                       ; Segundo byte do endereço $3F00
-    STA $2006                      ; Escreve byte baixo do endereço da PPU
+    LDA #$00
+    STA $2006                    ; Byte baixo de $3F00
 
-    LDX #$00                       ; X será o índice da paleta
+    LDX #$00
 
-load_bg_palette_loop:
+load_bg_palettes_loop:
 
-    LDA bg_palette, x              ; Lê uma cor da paleta de background
-    STA $2007                      ; Escreve essa cor na memória da PPU
+    LDA bg_palettes, x
+    STA $2007
 
-    INX                            ; Avança para a próxima cor
-    CPX #$04                       ; Já carregou 4 cores?
-    BNE load_bg_palette_loop       ; Se não, continua o loop
+    INX
+    CPX #$08                    ; Duas paletas = 8 bytes
+    BNE load_bg_palettes_loop
 
-    RTS                            ; Retorna para quem chamou
+    RTS
 
 ; ------------------------------------------------------------
 ; CARREGA PALETA DE SPRITES
@@ -147,25 +151,37 @@ clear_nametable_remaining:
 ;
 ; ------------------------------------------------------------
 
-clear_attribute_table:
+load_bg_attributes:
 
-    LDA $2002                     ; Reseta o latch de endereço da PPU
+    LDA $2002
 
-    LDA #$23                      ; Byte alto do endereço $23C0
+    LDA #$23
     STA $2006
 
-    LDA #$C0                      ; Byte baixo do endereço $23C0
+    LDA #$C0
     STA $2006
 
-    LDA #$00                      ; Todos os quadrantes usam a paleta 0
-    LDX #$00
+    ; Parte superior: paleta 0
+    LDA #$00
+    LDX #$20
 
-clear_attribute_table_loop:
+load_grass_attributes:
 
-    STA $2007                     ; Escreve um byte de atributos
-    INX
-    CPX #$40                      ; 64 bytes
-    BNE clear_attribute_table_loop
+    STA $2007
+
+    DEX
+    BNE load_grass_attributes
+
+    ; Parte inferior: paleta 1
+    LDA #$55
+    LDX #$20
+
+load_floor_attributes:
+
+    STA $2007
+
+    DEX
+    BNE load_floor_attributes
 
     RTS
 
@@ -183,23 +199,31 @@ clear_attribute_table_loop:
 ;
 ; Resultado:
 ;
-;     32 tiles de largura  = 256 pixels
-;     16 tiles de altura   = 128 pixels
+;     32 tiles de largura = 256 pixels
+;     16 tiles de altura  = 128 pixels
 ;
 ; ------------------------------------------------------------
 
+draw_background:
+
+    LDA $2002
+
+    LDA #$20
+    STA $2006
+
+    LDA #$00
+    STA $2006
+
+    JSR draw_grass              ; Desenha 16 linhas de gramado
+    JSR draw_floor              ; Continua do endereço atual e desenha 14 linhas
+
+    RTS
+
 draw_grass:
 
-    LDA $2002                     ; Reseta o latch de endereço da PPU
-
-    LDA #$20                      ; Byte alto do endereço $2000
-    STA $2006
-
-    LDA #$00                      ; Byte baixo do endereço $2000
-    STA $2006
-
     LDY #$08                      ; 8 blocos de altura
-                                   ; Cada bloco possui duas linhas
+                                  ; Cada bloco possui duas linhas
+                                  ; Total: 16 linhas de tiles
 
 draw_grass_block:
 
@@ -232,13 +256,79 @@ draw_grass_bottom_row:
     STA $2007
 
     LDA #$13                      ; Tile inferior direito
-    STA $2007}
+    STA $2007
 
     DEX
     BNE draw_grass_bottom_row
 
     DEY
     BNE draw_grass_block          ; Repete o bloco na vertical
+
+    RTS
+
+; ------------------------------------------------------------
+; DESENHA O CHÃO
+; ------------------------------------------------------------
+;
+; Os quatro tiles formam um bloco de 2x2:
+;
+;     $14 $15
+;     $16 $17
+;
+; O bloco é repetido 16 vezes horizontalmente e
+; 7 vezes verticalmente.
+;
+; Resultado:
+;
+;     32 tiles de largura = 256 pixels
+;     14 tiles de altura  = 112 pixels
+;
+; ------------------------------------------------------------
+
+draw_floor:
+
+    LDY #$07                      ; 7 blocos de altura
+                                  ; Cada bloco possui duas linhas
+                                  ; Total: 14 linhas de tiles
+
+draw_floor_block:
+
+    ; -----------------------------
+    ; Linha superior do bloco
+    ; -----------------------------
+
+    LDX #$10                      ; 16 blocos na horizontal
+
+draw_floor_top_row:
+
+    LDA #$14                      ; Tile superior esquerdo
+    STA $2007
+
+    LDA #$15                      ; Tile superior direito
+    STA $2007
+
+    DEX
+    BNE draw_floor_top_row
+
+    ; -----------------------------
+    ; Linha inferior do bloco
+    ; -----------------------------
+
+    LDX #$10                      ; 16 blocos na horizontal
+
+draw_floor_bottom_row:
+
+    LDA #$16                      ; Tile inferior esquerdo
+    STA $2007
+
+    LDA #$17                      ; Tile inferior direito
+    STA $2007
+
+    DEX
+    BNE draw_floor_bottom_row
+
+    DEY
+    BNE draw_floor_block          ; Repete o bloco na vertical
 
     RTS
 
