@@ -10,9 +10,9 @@
 
 ; Paleta 1 do Background
 ; $29 = Verde-limão (Cor universal de fundo)
-; $19 = Verde escuro
-; $2B = Verde médio
-; $39 = Verde claro
+; $17 = Marrom
+; $27 = Verde médio
+; $37 = Verde claro
 
 bg_palettes:
 
