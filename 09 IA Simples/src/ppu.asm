@@ -62,7 +62,7 @@ load_sprite_palette_loop:
     STA $2007                      ; Escreve essa cor na memória da PPU
 
     INX                            ; Avança para a próxima cor
-    CPX #$04                       ; Já carregou 4 cores?
+    CPX #$08                       ; Duas paletas = 8 bytes
     BNE load_sprite_palette_loop   ; Se não, continua o loop
 
     RTS                            ; Retorna para quem chamou
@@ -162,7 +162,7 @@ load_bg_attributes:
     STA $2006
 
     ; Parte superior: paleta 0
-    LDA #$00  ; ou #%00000000
+    LDA #$00
     LDX #$20
 
 load_grass_attributes:
@@ -173,7 +173,7 @@ load_grass_attributes:
     BNE load_grass_attributes
 
     ; Parte inferior: paleta 1
-    LDA #$55  ; ou #%01010101
+    LDA #$55
     LDX #$20
 
 load_floor_attributes:
@@ -214,8 +214,9 @@ draw_background:
     LDA #$00
     STA $2006
 
-    JSR draw_grass              ; Desenha 16 linhas de gramado
-    JSR draw_floor              ; Continua do endereço atual e desenha 14 linhas
+    JSR draw_grass
+    JSR draw_floor
+    JSR draw_fence
 
     RTS
 
@@ -329,6 +330,89 @@ draw_floor_bottom_row:
 
     DEY
     BNE draw_floor_block          ; Repete o bloco na vertical
+
+    RTS
+
+; ------------------------------------------------------------
+; DESENHA UMA CERCA
+; ------------------------------------------------------------
+;
+; Cada bloco da cerca possui 2x2 tiles:
+;
+;     $0C $0D
+;     $0E $0F
+;
+; Neste exemplo, a cerca começa na linha 6, coluna 10
+; e possui 4 blocos de largura.
+;
+; Posição em pixels:
+;
+;     X = 10 * 8 = 80
+;     Y = 6 * 8  = 48
+;
+; Tamanho:
+;
+;     largura = 4 * 16 = 64 pixels
+;     altura  = 16 pixels
+;
+; ------------------------------------------------------------
+
+draw_fence:
+
+    ; --------------------------------
+    ; Linha superior da cerca
+    ; Endereço: $2100 + (6 * 32) + 10
+    ;          $2100 + $C0 + $0A
+    ;          $21CD
+    ; --------------------------------
+
+    LDA $2002                     ; Reseta o latch da PPU
+
+    LDA #$21
+    STA $2006
+
+    LDA #$CD
+    STA $2006
+
+    LDX #$04                      ; 4 blocos de largura
+
+draw_fence_top:
+
+    LDA #$0C
+    STA $2007
+
+    LDA #$0D
+    STA $2007
+
+    DEX
+    BNE draw_fence_top
+
+    ; --------------------------------
+    ; Linha inferior da cerca
+    ; Uma linha abaixo = +32 bytes
+    ; $21CD + $20 = $21ED
+    ; --------------------------------
+
+    LDA $2002
+
+    LDA #$21
+    STA $2006
+
+    LDA #$ED
+    STA $2006
+
+    LDX #$04
+
+draw_fence_bottom:
+
+    LDA #$0E
+    STA $2007
+
+    LDA #$0F
+    STA $2007
+
+    DEX
+    BNE draw_fence_bottom
 
     RTS
 
