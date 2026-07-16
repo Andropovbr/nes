@@ -136,14 +136,21 @@ initialize_game:
 
     LDA #$00
     STA game_over
+
+    ; Nenhum projétil ativo.
+
     STA projectile_active
 
-    ; Limpa os estados usados para detectar novos botões.
-    ;
-    ; Isso evita que o botão Start usado para reiniciar seja
-    ; interpretado novamente como um novo pressionamento.
+    ; Limpa o estado do controle.
 
     STA controller_pressed
+
+    ; Copia o estado atual do controle.
+    ;
+    ; Assim o jogador pode manter Start pressionado sem provocar
+    ; reinicializações sucessivas.
+
+    LDA controller1
     STA previous_controller1
 
 
@@ -286,13 +293,26 @@ update_running_game:
     LDA collision
     BEQ check_enemy_player_collision
 
+    ; --------------------------------------------------------
     ; O projétil atingiu o inimigo.
-    ;
-    ; Desativa ambos.
+    ; --------------------------------------------------------
 
     LDA #$00
-    STA projectile_active
-    STA enemy_alive
+    STA projectile_active      ; Remove o projétil
+
+    LDA #$00
+    STA enemy_alive            ; Marca o inimigo como morto
+
+    ; --------------------------------------------------------
+    ; A partida terminou.
+    ;
+    ; O jogador venceu.
+    ; --------------------------------------------------------
+
+    LDA #$01
+    STA game_over
+
+    JMP update_game_sprites
 
 
 ; ------------------------------------------------------------
@@ -338,23 +358,30 @@ update_game_sprites:
 
 
 ; ------------------------------------------------------------
-; ESTADO DE GAME OVER
+; PARTIDA ENCERRADA
 ; ------------------------------------------------------------
 ;
-; O jogo fica parado esperando um novo pressionamento de Start.
+; Enquanto game_over = 1:
 ;
-; Como usamos controller_pressed, manter Start segurado não
-; provoca reinicializações contínuas.
+; • jogador não se move
+; • inimigo não se move
+; • projétil não se move
+;
+; O único botão aceito é Start.
 ;
 ; ------------------------------------------------------------
 
 update_game_over:
 
+    ; Verifica se Start acabou de ser pressionado.
+
     LDA controller_pressed
     AND #%00010000
     BEQ update_game_over_sprites
 
-    ; Start foi recém-pressionado.
+    ; --------------------------------------------------------
+    ; Reinicia toda a partida.
+    ; --------------------------------------------------------
 
     JSR initialize_game
 
