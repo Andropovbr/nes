@@ -1,322 +1,365 @@
-# IA Simples no NES em Assembly
+# Disparo de Projéteis e Colisão entre Entidades no NES
 
-Neste capítulo da série adicionamos o primeiro inimigo ao projeto. O objetivo foi implementar uma inteligência artificial simples capaz de perseguir o jogador, reutilizando os mesmos gráficos do personagem e alterando apenas a paleta de cores.
+## Objetivo
 
-Embora o comportamento seja bastante básico, ele introduz conceitos fundamentais que serão reutilizados na construção de jogos mais complexos.
+Até este ponto da série, já possuímos:
+
+- Movimentação do jogador;
+- Animação de sprites;
+- Colisão com obstáculos do cenário;
+- Um inimigo que persegue o jogador.
+
+Neste capítulo, evoluímos a demo adicionando:
+
+- Disparo de projéteis;
+- Colisão entre projétil e inimigo;
+- Colisão entre jogador e inimigo;
+- Estados de vitória e derrota;
+- Reinício da partida com o botão **Start**.
 
 ---
 
-## Objetivos
+# Organização do projeto
 
-Ao final desta etapa o projeto possui:
+Para manter o código organizado, cada responsabilidade ficou em um arquivo diferente.
 
-- Um inimigo desenhado na tela utilizando um sprite composto.
-- Reutilização dos mesmos tiles do jogador.
-- Paleta de cores independente para diferenciar o inimigo.
-- IA simples baseada na posição do jogador.
-- Controle da velocidade do inimigo.
-- Animação independente dos pés.
+| Arquivo | Responsabilidade |
+|----------|------------------|
+| `projectile.asm` | Criação, movimentação e desenho do projétil |
+| `collision.asm` | Colisões entre jogador, inimigo e projétil |
+| `controller.asm` | Detecção de botões recém-pressionados |
+| `main.asm` | Fluxo principal do jogo e estados da partida |
+
+Essa separação facilita futuras expansões e evita concentrar toda a lógica em um único arquivo.
 
 ---
 
-# Reaproveitando os Sprites
+# Um único projétil
 
-Como o jogador e o inimigo possuem exatamente o mesmo formato (3 × 3 sprites), não foi necessário criar novos gráficos.
+Nesta primeira implementação existe apenas um projétil ativo por vez.
 
-Os mesmos tiles da CHR foram reutilizados:
+Isso simplifica bastante a lógica.
 
+As variáveis utilizadas são:
+
+```asm
+projectile_active
+projectile_x
+projectile_y
+projectile_direction
 ```
-00 01 02
-03 04 05
-06 07 08
-```
 
-A única diferença visual está na paleta utilizada.
+Quando `projectile_active` vale zero, não existe nenhum projétil na tela.
 
-Enquanto o jogador utiliza a paleta 0, o inimigo utiliza a paleta 1.
+Ao pressionar o botão **A**, um novo projétil é criado.
+
+---
+
+# Disparo
+
+O projétil nasce na frente do jogador.
+
+Sua posição depende da direção para a qual o personagem está olhando.
 
 ```text
-Jogador
-Paleta 0
+Jogador olhando para a direita
 
-Inimigo
-Paleta 1
+[PLAYER]---->
+
+             *
+          projétil
 ```
-
-Essa técnica era bastante comum nos jogos do NES para economizar memória de vídeo.
-
----
-
-# Adicionando uma Segunda Paleta de Sprites
-
-Anteriormente o projeto carregava apenas uma paleta de sprites.
-
-Foi criada uma segunda paleta para o inimigo:
-
-```asm
-sprite_palettes:
-
-    ; Jogador
-    .byte $29, $0C, $21, $32
-
-    ; Inimigo
-    .byte $29, $15, $06, $26
-```
-
-A rotina de carregamento passou a copiar oito bytes em vez de apenas quatro.
-
----
-
-# Estrutura do Inimigo
-
-Foram adicionadas novas variáveis na página zero para controlar o estado do inimigo.
-
-```asm
-enemy_x
-enemy_y
-
-enemy_direction
-enemy_moving
-
-enemy_move_counter
-
-enemy_anim_counter
-enemy_anim_frame
-```
-
-Cada variável possui uma responsabilidade específica.
-
-| Variável | Função |
-|----------|--------|
-| enemy_x | Coordenada horizontal |
-| enemy_y | Coordenada vertical |
-| enemy_direction | Direção para a qual o inimigo está olhando |
-| enemy_moving | Indica se está perseguindo o jogador |
-| enemy_move_counter | Controla a velocidade da movimentação |
-| enemy_anim_counter | Controla a velocidade da animação |
-| enemy_anim_frame | Frame atual da caminhada |
-
----
-
-# IA de Perseguição
-
-A inteligência artificial implementada é extremamente simples.
-
-Primeiro o inimigo compara sua posição horizontal com a posição do jogador.
 
 ```text
-enemy_x < player_x
+Jogador olhando para a esquerda
+
+<----[PLAYER]
+
+   *
+projétil
 ```
 
-↓
+A direção do projétil é copiada da direção atual do jogador.
 
-Move para a direita.
+Depois disso, ele continua seguindo seu caminho mesmo que o jogador mude de direção.
 
-Caso contrário:
+---
+
+# Movimento
+
+A cada frame o projétil é deslocado alguns pixels.
 
 ```text
-enemy_x > player_x
+Frame 1
+
+*
+
+Frame 2
+
+   *
+
+Frame 3
+
+      *
 ```
 
-↓
+Quando ele alcança uma das bordas da tela, é desativado.
 
-Move para a esquerda.
+Isso evita que continue existindo fora da área visível.
 
-O mesmo processo é repetido para o eixo Y.
+---
+
+# Sprite do projétil
+
+O jogador ocupa os sprites:
+
+```
+$0200-$0223
+```
+
+O inimigo ocupa:
+
+```
+$0224-$0247
+```
+
+O próximo sprite livre fica em:
+
+```
+$0248
+```
+
+Portanto, o projétil utiliza:
+
+| Endereço | Conteúdo |
+|----------|-----------|
+| `$0248` | Y |
+| `$0249` | Tile |
+| `$024A` | Atributos |
+| `$024B` | X |
+
+Quando o projétil está inativo, sua coordenada Y recebe `$FE`, escondendo-o da tela.
+
+---
+
+# Botões recém-pressionados
+
+Até agora o programa verificava apenas se um botão estava pressionado.
+
+Para o disparo isso não é suficiente.
+
+Se o botão **A** permanecer pressionado durante vários frames, um novo projétil seria criado continuamente.
+
+Para resolver isso foram adicionadas três variáveis:
+
+```asm
+controller1
+previous_controller1
+controller_pressed
+```
+
+O cálculo realizado é:
 
 ```text
-enemy_y < player_y
+controller_pressed =
+    controller_atual
+    AND
+    (NOT controller_anterior)
 ```
 
-↓
+Assim somente os botões que acabaram de ser pressionados permanecem ativos durante um único frame.
 
-Move para baixo.
+Essa mesma lógica também foi utilizada para detectar o botão **Start**.
+
+---
+
+# Colisão entre entidades
+
+Até então existia apenas a colisão entre jogador e cenário.
+
+Agora o mesmo conceito foi aplicado entre entidades móveis.
+
+Foram implementadas duas novas rotinas:
+
+- Jogador × Inimigo
+- Projétil × Inimigo
+
+---
+
+# Bounding Box (AABB)
+
+Cada objeto é tratado como um retângulo.
 
 ```text
-enemy_y > player_y
++-------------------+
+|                   |
+|      Jogador      |
+|                   |
++-------------------+
 ```
 
-↓
+A colisão ocorre quando esses retângulos se sobrepõem.
 
-Move para cima.
+Não é necessário verificar pixel por pixel.
 
-O resultado é um inimigo que sempre tenta reduzir a distância até o jogador.
+A rotina procura quatro situações em que os retângulos estão completamente separados.
+
+Se nenhuma delas ocorrer, existe colisão.
 
 ---
 
-# Comparando Coordenadas
+# Colisão entre jogador e inimigo
 
-A decisão é feita utilizando a instrução `CMP`.
+Jogador e inimigo possuem aproximadamente:
+
+```
+24 x 24 pixels
+```
+
+São verificadas quatro condições:
+
+- jogador totalmente à esquerda;
+- jogador totalmente à direita;
+- jogador totalmente acima;
+- jogador totalmente abaixo.
+
+Se nenhuma delas for verdadeira:
 
 ```asm
-LDA enemy_x
-CMP player_x
+collision = 1
 ```
 
-Após a comparação são utilizadas duas instruções de desvio:
+O programa então:
 
-- `BEQ` → posições iguais
-- `BCC` → inimigo menor que jogador
-
-Quando nenhuma delas ocorre, significa que:
-
-```text
-enemy_x > player_x
-```
-
-e o inimigo deve mover-se para a esquerda.
+- marca o jogador como morto;
+- encerra a partida.
 
 ---
 
-# Controlando a Velocidade
+# Colisão entre projétil e inimigo
 
-Se o inimigo se movesse em todos os frames, sua velocidade seria muito alta.
+O projétil utiliza uma caixa de colisão de:
 
-Para resolver isso foi criado um contador.
-
-```asm
-INC enemy_move_counter
+```
+8 x 8 pixels
 ```
 
-Enquanto o contador ainda não atingir o valor definido por:
+Embora o desenho possua apenas alguns pixels visíveis, utilizar uma caixa maior torna o jogo mais agradável.
 
-```asm
-ENEMY_MOVE_DELAY
-```
+Quando ocorre colisão:
 
-a rotina termina imediatamente.
-
-```asm
-CMP #ENEMY_MOVE_DELAY
-BCC update_enemy_done
-```
-
-Quando o contador chega ao limite:
-
-- o contador é reiniciado;
-- o inimigo pode dar mais um passo.
-
-Essa técnica é bastante utilizada em jogos para controlar velocidades sem depender de temporizadores.
+- o projétil desaparece;
+- o inimigo desaparece;
+- a partida termina.
 
 ---
 
-# Animação Independente
+# Escondendo sprites
 
-Assim como o jogador, o inimigo possui sua própria animação.
+No NES não é necessário remover sprites da OAM.
 
-São utilizadas duas variáveis:
+Basta posicioná-los fora da tela.
+
+Para isso, utiliza-se:
 
 ```asm
-enemy_anim_counter
-enemy_anim_frame
+Y = $FE
 ```
 
-Enquanto o inimigo estiver perseguindo o jogador, o contador avança.
+Essa técnica foi utilizada para esconder:
 
-A cada oito frames o valor de `enemy_anim_frame` é alternado entre:
+- jogador;
+- inimigo;
+- projétil.
 
-```
-0
-1
-```
-
-fazendo os pés mudarem entre os dois conjuntos de tiles.
+É uma solução extremamente comum em jogos comerciais para o NES.
 
 ---
 
-# Atualizando a OAM
+# Estado da partida
 
-O jogador ocupa os primeiros 36 bytes da OAM Shadow.
-
-```
-$0200
-...
-$0223
-```
-
-O inimigo foi colocado logo em seguida.
-
-```
-$0224
-...
-$0247
-```
-
-Como cada sprite ocupa quatro bytes:
-
-```
-Y
-Tile
-Atributos
-X
-```
-
-o índice `X` do loop é incrementado quatro vezes ao final de cada iteração.
+Foi adicionada a variável:
 
 ```asm
-INX
-INX
-INX
-INX
+game_over
 ```
 
-Já o índice `Y` percorre as tabelas de deslocamentos e tiles.
+Ela indica apenas se a partida terminou.
+
+```
+0 = partida em andamento
+
+1 = partida encerrada
+```
+
+Não importa quem venceu.
+
+O resultado pode ser identificado observando:
 
 ```asm
-INY
-```
+player_alive
 
-Ao final do processo os nove sprites do inimigo já estão posicionados corretamente na OAM Shadow.
+enemy_alive
+```
 
 ---
 
-# Organização do Loop Principal
+# Reinício da partida
 
-O loop principal passou a atualizar tanto o jogador quanto o inimigo.
+Quando `game_over` vale um, o jogo deixa de atualizar:
 
-```text
-Ler controle
+- jogador;
+- inimigo;
+- projétil.
 
-↓
+O único botão aceito passa a ser:
 
-Atualizar jogador
-
-↓
-
-Atualizar animação do jogador
-
-↓
-
-Atualizar IA do inimigo
-
-↓
-
-Atualizar animação do inimigo
-
-↓
-
-Atualizar OAM
+```
+Start
 ```
 
-Essa organização separa claramente:
+Ao pressioná-lo, a rotina `initialize_game` restaura:
 
-- entrada;
-- lógica do jogo;
-- renderização.
+- posição do jogador;
+- posição do inimigo;
+- estados das animações;
+- projétil;
+- estado da partida.
+
+Não é necessário executar novamente o processo completo de RESET do console.
 
 ---
 
-# Próximos Passos
+# Organização das responsabilidades
 
-Com o inimigo funcionando, o projeto já possui a base necessária para implementar mecânicas mais interessantes.
+Uma preocupação importante desta etapa foi separar as responsabilidades do código.
 
-Nos próximos capítulos poderemos adicionar:
+- `projectile.asm` cuida apenas do projétil;
+- `collision.asm` apenas detecta colisões;
+- `main.asm` decide o que acontece após uma colisão;
+- `controller.asm` interpreta a entrada do jogador.
 
-- colisão entre jogador e inimigo;
-- vidas;
-- efeito de dano;
-- múltiplos inimigos;
-- disparos;
-- IA mais sofisticada.
+Essa organização torna o projeto mais fácil de manter e preparar para futuras expansões.
 
-A partir desse ponto o projeto começa a se aproximar cada vez mais de um jogo completo.
+---
+
+# Próximos passos
+
+Com essa etapa concluída, nossa demo já possui praticamente todos os elementos fundamentais de um jogo para NES:
+
+- ✅ Controle
+- ✅ Movimento
+- ✅ Animação
+- ✅ Colisão com cenário
+- ✅ IA simples
+- ✅ Disparo
+- ✅ Colisão entre entidades
+- ✅ Estados de vitória e derrota
+
+Nos próximos capítulos adicionaremos:
+
+- efeitos sonoros;
+- música de fundo;
+- integração do sistema de áudio ao projeto.
+
+Após isso, a base estará pronta para iniciar o desenvolvimento de um jogo completo utilizando toda a infraestrutura construída ao longo da série.
