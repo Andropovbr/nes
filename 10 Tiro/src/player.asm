@@ -15,6 +15,19 @@ PLAYER_MAX_Y = $D8       ; 240 - 24 pixels
 
 update_player:
 
+    ; Jogador morto não pode mais se mover.
+
+    LDA player_alive
+    BNE update_living_player
+
+    LDA #$00
+    STA player_moving
+
+    RTS
+
+
+update_living_player:
+
     LDA #$00
     STA player_moving           ; Começa assumindo que não houve movimento
 
@@ -208,6 +221,16 @@ update_player_done:
 ; ------------------------------------------------------------
 
 update_player_animation:
+
+    ; Jogador morto não precisa atualizar sua animação.
+
+    LDA player_alive
+    BNE update_living_player_animation
+
+    RTS
+
+
+update_living_player_animation:
 
     LDA player_moving           ; Verifica se o jogador se moveu neste frame
     BNE player_is_moving        ; Se player_moving != 0, atualiza animação

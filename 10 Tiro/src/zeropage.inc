@@ -27,3 +27,44 @@ enemy_move_counter:   .res 1    ; Controla a velocidade da perseguição
 
 enemy_anim_counter:   .res 1    ; Controla a velocidade da animação
 enemy_anim_frame:     .res 1    ; Frame atual da animação dos pés
+
+; ------------------------------------------------------------
+; ESTADOS DOS PERSONAGENS E DO JOGO
+; ------------------------------------------------------------
+
+player_alive:           .res 1    ; 0 = jogador morto, 1 = jogador vivo
+enemy_alive:            .res 1    ; 0 = inimigo morto, 1 = inimigo vivo
+
+game_over:              .res 1    ; 0 = jogo em andamento, 1 = fim de jogo
+
+
+; ------------------------------------------------------------
+; CONTROLE — BOTÕES RECÉM-PRESSIONADOS
+; ------------------------------------------------------------
+;
+; controller1 guarda os botões atualmente pressionados.
+;
+; previous_controller1 guarda os botões do frame anterior.
+;
+; controller_pressed possui somente os botões que passaram
+; de soltos para pressionados no frame atual.
+;
+; Isso evita repetir um disparo ou reinício enquanto o botão
+; continua sendo segurado.
+;
+; ------------------------------------------------------------
+
+previous_controller1:   .res 1
+controller_pressed:     .res 1
+
+
+; ------------------------------------------------------------
+; PROJÉTIL
+; ------------------------------------------------------------
+
+projectile_active:      .res 1    ; 0 = projétil inativo, 1 = ativo
+
+projectile_x:           .res 1    ; Posição X do projétil
+projectile_y:           .res 1    ; Posição Y do projétil
+
+projectile_direction:   .res 1    ; 0 = direita, 1 = esquerda

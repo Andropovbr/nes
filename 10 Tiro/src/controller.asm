@@ -43,3 +43,61 @@ read_controller_loop:
     BNE read_controller_loop ; Continua até ler os 8 botões
 
     RTS                   ; Retorna ao programa principal
+
+; ------------------------------------------------------------
+; IDENTIFICA BOTÕES RECÉM-PRESSIONADOS
+; ------------------------------------------------------------
+;
+; A rotina compara o estado atual do controle com o estado
+; do frame anterior.
+;
+; Exemplo:
+;
+; Frame anterior:
+;     A = 0
+;
+; Frame atual:
+;     A = 1
+;
+; Nesse caso, o bit de A será colocado em controller_pressed.
+;
+; Se o jogador continuar segurando A no próximo frame:
+;
+; Frame anterior:
+;     A = 1
+;
+; Frame atual:
+;     A = 1
+;
+; controller_pressed será zero para esse botão.
+;
+; Operação realizada:
+;
+; controller_pressed = controller1 AND NOT previous_controller1
+;
+; ------------------------------------------------------------
+
+update_controller_pressed:
+
+    ; Inverte o estado anterior.
+    ;
+    ; Botões que estavam soltos passam a possuir bit 1.
+
+    LDA previous_controller1
+    EOR #$FF
+
+    ; Mantém somente os botões que:
+    ;
+    ; 1. Estavam soltos no frame anterior
+    ; 2. Estão pressionados no frame atual
+
+    AND controller1
+    STA controller_pressed
+
+    ; O estado atual passa a ser o estado anterior
+    ; para a comparação do próximo frame.
+
+    LDA controller1
+    STA previous_controller1
+
+    RTS

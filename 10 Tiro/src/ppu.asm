@@ -436,10 +436,66 @@ load_biker_sprite_loop:
     RTS                            ; Retorna para quem chamou
 
 ; ------------------------------------------------------------
+; ESCONDE OS SPRITES DO JOGADOR
+; ------------------------------------------------------------
+;
+; O jogador é formado por nove sprites:
+;
+;     $0200, $0204, $0208
+;     $020C, $0210, $0214
+;     $0218, $021C, $0220
+;
+; O primeiro byte de cada sprite é sua coordenada Y.
+;
+; Colocar Y em $FE faz o sprite permanecer fora da área
+; visível da tela.
+;
+; Não é necessário apagar tiles nem alterar a CHR ROM.
+;
+; ------------------------------------------------------------
+
+hide_biker_sprite:
+
+    LDA #$FE
+
+    ; Primeira linha.
+
+    STA $0200
+    STA $0204
+    STA $0208
+
+    ; Segunda linha.
+
+    STA $020C
+    STA $0210
+    STA $0214
+
+    ; Terceira linha.
+
+    STA $0218
+    STA $021C
+    STA $0220
+
+    RTS
+
+; ------------------------------------------------------------
 ; ATUALIZA POSIÇÃO DO SPRITE COMPOSTO
 ; ------------------------------------------------------------
 
 update_biker_sprite:
+
+    ; Se o jogador estiver morto, esconde todos os nove
+    ; sprites que formam seu personagem.
+
+    LDA player_alive
+    BNE update_visible_biker_sprite
+
+    JSR hide_biker_sprite
+
+    RTS
+
+
+update_visible_biker_sprite:
 
     LDA player_direction           ; Carrega a direção atual do jogador
     BEQ update_biker_sprite_right  ; Se for 0, personagem olha para a direita

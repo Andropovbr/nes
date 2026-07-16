@@ -20,6 +20,19 @@ ENEMY_MOVE_DELAY = $03          ; Inimigo anda a cada 3 frames
 
 update_enemy:
 
+    ; Um inimigo morto não atualiza mais sua posição.
+
+    LDA enemy_alive
+    BNE update_living_enemy
+
+    LDA #$00
+    STA enemy_moving
+
+    RTS
+
+
+update_living_enemy:
+
     ; O inimigo continua sendo considerado em movimento
     ; enquanto ainda não alcançou o jogador.
 
@@ -152,6 +165,16 @@ enemy_move_down:
 
 update_enemy_animation:
 
+    ; Inimigo morto não precisa atualizar animação.
+
+    LDA enemy_alive
+    BNE update_living_enemy_animation
+
+    RTS
+
+
+update_living_enemy_animation:
+
     LDA enemy_moving            ; Verifica se o inimigo está se movendo
     BNE enemy_is_moving         ; Se estiver, atualiza a animação
 
@@ -203,7 +226,60 @@ enemy_animation_done:
 ;
 ; ------------------------------------------------------------
 
+; ------------------------------------------------------------
+; ESCONDE OS SPRITES DO INIMIGO
+; ------------------------------------------------------------
+;
+; O inimigo utiliza nove sprites na OAM shadow:
+;
+;     $0224, $0228, $022C
+;     $0230, $0234, $0238
+;     $023C, $0240, $0244
+;
+; Cada endereço abaixo corresponde ao byte Y de um sprite.
+;
+; Colocar Y em $FE esconde o sprite fora da tela.
+;
+; ------------------------------------------------------------
+
+hide_enemy_sprite:
+
+    LDA #$FE
+
+    ; Primeira linha.
+
+    STA $0224
+    STA $0228
+    STA $022C
+
+    ; Segunda linha.
+
+    STA $0230
+    STA $0234
+    STA $0238
+
+    ; Terceira linha.
+
+    STA $023C
+    STA $0240
+    STA $0244
+
+    RTS
+
 update_enemy_sprite:
+
+    ; Se o inimigo estiver morto, esconde todos os seus
+    ; nove sprites.
+
+    LDA enemy_alive
+    BNE update_visible_enemy_sprite
+
+    JSR hide_enemy_sprite
+
+    RTS
+
+
+update_visible_enemy_sprite:
 
     LDX #$00                    ; Deslocamento na OAM
     LDY #$00                    ; Índice do sprite

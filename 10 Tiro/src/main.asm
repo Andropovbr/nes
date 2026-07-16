@@ -76,39 +76,8 @@ vblankwait2:
     JSR draw_background     ; Desenha o gramado e o chão na PPU
     JSR load_bg_attributes  ; Carrega os atributos do mapa de tiles na PPU
 
-    JSR load_biker_sprite      ; Copia os dados iniciais do personagem
-
-    LDA #$80
-    STA player_x           ; Posição X inicial do personagem
-
-    LDA #$40
-    STA player_y           ; Posição Y inicial do personagem
-
-    LDA #$00
-    STA anim_counter       ; Zera contador da animação
-    STA anim_frame         ; Zera frame atual da animação
-    STA player_moving      ; Começa com o personagem parado
-
-    JSR update_biker_sprite ; Atualiza a OAM shadow com posição/animação
-
-; ------------------------------------------------------------
-; INICIALIZA O INIMIGO
-; ------------------------------------------------------------
-
-    LDA #$20
-    STA enemy_x                  ; Começa próximo ao lado esquerdo
-
-    LDA #$B0
-    STA enemy_y                  ; Começa na parte inferior da tela
-
-    LDA #$00
-    STA enemy_direction          ; Começa olhando para a direita
-    STA enemy_moving
-    STA enemy_move_counter
-    STA enemy_anim_counter
-    STA enemy_anim_frame
-
-    JSR update_enemy_sprite      ; Coloca o inimigo na OAM shadow
+    JSR load_biker_sprite   ; Copia os dados iniciais do personagem
+    JSR initialize_game     ; Inicializa jogador, inimigo e projétil
 
 enable_ppu:
 
@@ -126,34 +95,283 @@ enable_ppu:
     LDA #%00011110
     STA $2001                  ; Liga background e sprites
 
+    ; A inicialização terminou.
+    ; Salta explicitamente para o loop principal.
+    ;
+    ; Isso evita que a execução caia acidentalmente na rotina
+    ; initialize_game, que termina com RTS e deve ser chamada
+    ; somente através de JSR.
+
+    JMP forever
+
 ; ------------------------------------------------------------
 ; CÓDIGO PRINCIPAL
 ; ------------------------------------------------------------
 
 .segment "CODE"
 
+; ------------------------------------------------------------
+; INICIALIZA UMA NOVA PARTIDA
+; ------------------------------------------------------------
+;
+; Esta rotina reinicia somente o estado do jogo.
+;
+; Ela não:
+;
+; - limpa a RAM inteira;
+; - recarrega paletas;
+; - redesenha a nametable;
+; - reinicializa a PPU;
+;
+; Portanto, pode ser chamada quando o jogador pressionar Start
+; sem executar novamente todo o processo de RESET do console.
+;
+; ------------------------------------------------------------
+
+initialize_game:
+
+    ; --------------------------------------------------------
+    ; ESTADO GERAL
+    ; --------------------------------------------------------
+
+    LDA #$00
+    STA game_over
+    STA projectile_active
+
+    ; Limpa os estados usados para detectar novos botões.
+    ;
+    ; Isso evita que o botão Start usado para reiniciar seja
+    ; interpretado novamente como um novo pressionamento.
+
+    STA controller_pressed
+    STA previous_controller1
+
+
+    ; --------------------------------------------------------
+    ; JOGADOR
+    ; --------------------------------------------------------
+
+    LDA #$80
+    STA player_x
+
+    LDA #$40
+    STA player_y
+
+    LDA #$00
+    STA player_direction
+    STA player_moving
+    STA anim_counter
+    STA anim_frame
+
+    LDA #$01
+    STA player_alive
+
+
+    ; --------------------------------------------------------
+    ; INIMIGO
+    ; --------------------------------------------------------
+
+    LDA #$20
+    STA enemy_x
+
+    LDA #$B0
+    STA enemy_y
+
+    LDA #$00
+    STA enemy_direction
+    STA enemy_moving
+    STA enemy_move_counter
+    STA enemy_anim_counter
+    STA enemy_anim_frame
+
+    LDA #$01
+    STA enemy_alive
+
+
+    ; --------------------------------------------------------
+    ; PROJÉTIL
+    ; --------------------------------------------------------
+    ;
+    ; As coordenadas não seriam utilizadas enquanto o projétil
+    ; estivesse inativo, mas são zeradas para manter um estado
+    ; inicial bem definido.
+    ;
+    ; --------------------------------------------------------
+
+    LDA #$00
+    STA projectile_x
+    STA projectile_y
+    STA projectile_direction
+
+
+    ; --------------------------------------------------------
+    ; ATUALIZA A OAM SHADOW
+    ; --------------------------------------------------------
+
+    JSR update_biker_sprite
+    JSR update_enemy_sprite
+    JSR update_projectile_sprite
+
+    RTS
+
 forever:
 
 wait_frame:
-    LDA frame_ready        ; Verifica se a NMI marcou um novo frame
-    BEQ wait_frame         ; Enquanto não houver frame novo, espera
+
+    LDA frame_ready
+    BEQ wait_frame
 
     LDA #$00
-    STA frame_ready        ; Consome o frame atual
+    STA frame_ready
 
-    JSR read_controller    ; Lê o controle
+    ; --------------------------------------------------------
+    ; LEITURA DO CONTROLE
+    ; --------------------------------------------------------
 
-    ; Lógica do jogo
-    JSR update_player      ; Atualiza posição/movimento do jogador
-    JSR update_player_animation ; Atualiza frame da animação
+    JSR read_controller
+    JSR update_controller_pressed
+
+
+    ; --------------------------------------------------------
+    ; VERIFICA O ESTADO DO JOGO
+    ; --------------------------------------------------------
+    ;
+    ; Se game_over for diferente de zero, não atualiza mais
+    ; jogador, inimigo ou projétil.
+    ;
+    ; Apenas espera o jogador pressionar Start.
+    ;
+    ; --------------------------------------------------------
+
+    LDA game_over
+    BNE update_game_over
+
+
+; ------------------------------------------------------------
+; JOGO EM ANDAMENTO
+; ------------------------------------------------------------
+
+update_running_game:
+
+    ; --------------------------------------------------------
+    ; JOGADOR
+    ; --------------------------------------------------------
+
+    JSR update_player
+    JSR update_player_animation
+
+
+    ; --------------------------------------------------------
+    ; PROJÉTIL
+    ; --------------------------------------------------------
+
+    JSR check_projectile_input
+    JSR update_projectile
+
+
+    ; --------------------------------------------------------
+    ; INIMIGO
+    ; --------------------------------------------------------
+
     JSR update_enemy
     JSR update_enemy_animation
 
-    ; Atualização da OAM shadow.
-    JSR update_biker_sprite ; Atualiza sprites na OAM shadow
-    JSR update_enemy_sprite
 
-    JMP forever            ; Repete para o próximo frame
+    ; --------------------------------------------------------
+    ; COLISÃO ENTRE PROJÉTIL E INIMIGO
+    ; --------------------------------------------------------
+
+    JSR check_projectile_enemy_collision
+
+    LDA collision
+    BEQ check_enemy_player_collision
+
+    ; O projétil atingiu o inimigo.
+    ;
+    ; Desativa ambos.
+
+    LDA #$00
+    STA projectile_active
+    STA enemy_alive
+
+
+; ------------------------------------------------------------
+; COLISÃO ENTRE INIMIGO E JOGADOR
+; ------------------------------------------------------------
+
+check_enemy_player_collision:
+
+    ; Se o inimigo morreu neste frame, não pode também matar
+    ; o jogador no mesmo frame.
+
+    LDA enemy_alive
+    BEQ update_game_sprites
+
+    JSR check_player_enemy_collision
+
+    LDA collision
+    BEQ update_game_sprites
+
+    ; O inimigo atingiu o jogador.
+
+    LDA #$00
+    STA player_alive
+    STA projectile_active
+
+    ; Entra no estado de fim de jogo.
+
+    LDA #$01
+    STA game_over
+
+
+; ------------------------------------------------------------
+; ATUALIZA A OAM SHADOW
+; ------------------------------------------------------------
+
+update_game_sprites:
+
+    JSR update_biker_sprite
+    JSR update_enemy_sprite
+    JSR update_projectile_sprite
+
+    JMP forever
+
+
+; ------------------------------------------------------------
+; ESTADO DE GAME OVER
+; ------------------------------------------------------------
+;
+; O jogo fica parado esperando um novo pressionamento de Start.
+;
+; Como usamos controller_pressed, manter Start segurado não
+; provoca reinicializações contínuas.
+;
+; ------------------------------------------------------------
+
+update_game_over:
+
+    LDA controller_pressed
+    AND #%00010000
+    BEQ update_game_over_sprites
+
+    ; Start foi recém-pressionado.
+
+    JSR initialize_game
+
+    JMP forever
+
+
+; ------------------------------------------------------------
+; MANTÉM A OAM SHADOW CONSISTENTE DURANTE O GAME OVER
+; ------------------------------------------------------------
+
+update_game_over_sprites:
+
+    JSR update_biker_sprite
+    JSR update_enemy_sprite
+    JSR update_projectile_sprite
+
+    JMP forever
 
 ; ------------------------------------------------------------
 ; ARQUIVOS DO PROJETO
@@ -164,6 +382,7 @@ wait_frame:
 .include "collision.asm"   ; Colisão com a cerca
 .include "player.asm"      ; Movimento e animação do personagem
 .include "enemy.asm"       ; IA, animação e desenho do inimigo
+.include "projectile.asm"  ; Movimento do projétil
 .include "palettes.asm"    ; Dados e carregamento de paletas
 .include "biker.asm"       ; Dados do sprite composto
 
