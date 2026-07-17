@@ -1,0 +1,11 @@
+anim_counter:         .res 1                     ; Mantem esta declaracao na montagem do projeto
+anim_frame:           .res 1                     ; Mantem esta declaracao na montagem do projeto
+enemy_move_counter:   .res 1                     ; Mantem esta declaracao na montagem do projeto
+enemy_anim_counter:   .res 1                     ; Mantem esta declaracao na montagem do projeto
+enemy_anim_frame:     .res 1                     ; Mantem esta declaracao na montagem do projeto
+projectile_x:         .res 1                     ; Mantem esta declaracao na montagem do projeto
+projectile_y:         .res 1                     ; Mantem esta declaracao na montagem do projeto
+projectile_direction: .res 1                     ; Mantem esta declaracao na montagem do projeto
+projectile_active:    .res 1                     ; Mantem esta declaracao na montagem do projeto
+collision:            .res 1                     ; Mantem esta declaracao na montagem do projeto
+game_over:            .res 1                     ; Mantem esta declaracao na montagem do projeto

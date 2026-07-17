@@ -1,7 +1,7 @@
 @echo off
 
 ca65 src/main.asm -o main.o --debug-info || goto :erro
-ld65 main.o -o sound.nes -t nes --dbgfile sound.dbg || goto :erro
+ld65 main.o -o sound.nes -C nes-dpcm.cfg --dbgfile sound.dbg || goto :erro
 
 echo.
 choice /C SN /N /M "Abrir no Mesen? [S/N] "

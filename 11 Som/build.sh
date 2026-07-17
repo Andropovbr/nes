@@ -7,7 +7,7 @@ MESEN="$HOME/nes/Mesen"
 set -e
 
 "$CA65" src/main.asm -o main.o --debug-info
-"$LD65" main.o -o sound.nes -t nes --dbgfile sound.dbg
+"$LD65" main.o -o sound.nes -C nes-dpcm.cfg --dbgfile sound.dbg
 
 echo
 echo "Compilação concluída com sucesso!"

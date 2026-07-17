@@ -1,268 +1,113 @@
-; ------------------------------------------------------------
-; LIMITES DO JOGADOR
-; ------------------------------------------------------------
-
-PLAYER_MIN_X = $07
-PLAYER_MAX_X = $E8       ; 256 - 24 pixels
-
-PLAYER_MIN_Y = $00
-PLAYER_MAX_Y = $D8       ; 240 - 24 pixels
-
-
-; ------------------------------------------------------------
-; ATUALIZA JOGADOR
-; ------------------------------------------------------------
-
-update_player:
-
-    ; Jogador morto não pode mais se mover.
-
-    LDA player_alive
-    BNE update_living_player
-
-    LDA #$00
-    STA player_moving
-
-    RTS
-
-
-update_living_player:
-
-    LDA #$00
-    STA player_moving           ; Começa assumindo que não houve movimento
-
-
-; ------------------------------------------------------------
-; MOVIMENTO PARA A DIREITA
-; ------------------------------------------------------------
-
-check_right:
-
-    LDA controller1
-    AND #%00000001
-    BEQ check_left
-
-    ; Mesmo bloqueado, o personagem passa a olhar para a direita.
-
-    LDA #$00
-    STA player_direction
-
-    ; Verifica o limite direito da tela.
-
-    LDA player_x
-    CMP #PLAYER_MAX_X
-    BCS check_left
-
-    ; Tenta mover um pixel.
-
-    INC player_x
-
-    ; Verifica se a nova posição encosta na cerca.
-
-    JSR check_fence_collision
-
-    LDA collision
-    BNE undo_move_right
-
-    ; Movimento aceito.
-
-    LDA #$01
-    STA player_moving
-
-    JMP check_left
-
-
-undo_move_right:
-
-    DEC player_x                ; Desfaz o movimento
-
-    JMP check_left
-
-
-; ------------------------------------------------------------
-; MOVIMENTO PARA A ESQUERDA
-; ------------------------------------------------------------
-
-check_left:
-
-    LDA controller1
-    AND #%00000010
-    BEQ check_down
-
-    ; Mesmo bloqueado, olha para a esquerda.
-
-    LDA #$01
-    STA player_direction
-
-    ; Verifica o limite esquerdo da tela.
-
-    LDA player_x
-    CMP #PLAYER_MIN_X
-    BEQ check_down
-
-    ; Tenta mover um pixel.
-
-    DEC player_x
-
-    ; Verifica a nova posição.
-
-    JSR check_fence_collision
-
-    LDA collision
-    BNE undo_move_left
-
-    ; Movimento aceito.
-
-    LDA #$01
-    STA player_moving
-
-    JMP check_down
-
-
-undo_move_left:
-
-    INC player_x                ; Desfaz o movimento
-
-    JMP check_down
-
-
-; ------------------------------------------------------------
-; MOVIMENTO PARA BAIXO
-; ------------------------------------------------------------
-
-check_down:
-
-    LDA controller1
-    AND #%00000100
-    BEQ check_up
-
-    ; Verifica o limite inferior da tela.
-
-    LDA player_y
-    CMP #PLAYER_MAX_Y
-    BCS check_up
-
-    ; Tenta mover um pixel.
-
-    INC player_y
-
-    ; Verifica a nova posição.
-
-    JSR check_fence_collision
-
-    LDA collision
-    BNE undo_move_down
-
-    ; Movimento aceito.
-
-    LDA #$01
-    STA player_moving
-
-    JMP check_up
-
-
-undo_move_down:
-
-    DEC player_y                ; Desfaz o movimento
-
-    JMP check_up
-
-
-; ------------------------------------------------------------
-; MOVIMENTO PARA CIMA
-; ------------------------------------------------------------
-
-check_up:
-
-    LDA controller1
-    AND #%00001000
-    BEQ update_player_done
-
-    ; Verifica o limite superior da tela.
-
-    LDA player_y
-    CMP #PLAYER_MIN_Y
-    BEQ update_player_done
-
-    ; Tenta mover um pixel.
-
-    DEC player_y
-
-    ; Verifica a nova posição.
-
-    JSR check_fence_collision
-
-    LDA collision
-    BNE undo_move_up
-
-    ; Movimento aceito.
-
-    LDA #$01
-    STA player_moving
-
-    JMP update_player_done
-
-
-undo_move_up:
-
-    INC player_y                 ; Desfaz o movimento
-
-
-update_player_done:
-
-    RTS
-
-; ------------------------------------------------------------
-; ATUALIZA ANIMAÇÃO DO JOGADOR
-; ------------------------------------------------------------
-;
-; A animação só avança quando o jogador está se movendo.
-; Se ele estiver parado, a animação volta para o frame inicial.
-; ------------------------------------------------------------
-
-update_player_animation:
-
-    ; Jogador morto não precisa atualizar sua animação.
-
-    LDA player_alive
-    BNE update_living_player_animation
-
-    RTS
-
-
-update_living_player_animation:
-
-    LDA player_moving           ; Verifica se o jogador se moveu neste frame
-    BNE player_is_moving        ; Se player_moving != 0, atualiza animação
-
-player_is_stopped:
-
-    LDA #$00                    ; Jogador parado usa o frame inicial
-    STA anim_counter            ; Zera o contador da animação
-    STA anim_frame              ; Zera o frame atual da animação
-
-    RTS                         ; Retorna sem avançar animação
-
-player_is_moving:
-
-    INC anim_counter            ; Incrementa contador da animação
-
-    LDA anim_counter            ; Carrega o valor atual do contador
-    CMP #$08                    ; A animação só avança a cada 8 frames
-    BCC animation_done          ; Se ainda não chegou em 8, termina
-
-    LDA #$00                    ; Reinicia o contador
-    STA anim_counter            ; anim_counter = 0
-
-    INC anim_frame              ; Avança para o próximo frame da animação
-
-    LDA anim_frame              ; Carrega o frame atual
-    CMP #$02                    ; Temos 2 frames: 0 e 1
-    BCC animation_done          ; Se ainda for menor que 2, mantém
-
-    LDA #$00                    ; Se passou do último frame, volta ao frame 0
-    STA anim_frame              ; anim_frame = 0
-
-animation_done:
-
-    RTS                         ; Retorna ao loop principal
+PLAYER_MIN_X = $07                               ; Configura a constante PLAYER_MIN_X
+PLAYER_MAX_X = $E8                               ; Configura a constante PLAYER_MAX_X
+PLAYER_MIN_Y = $00                               ; Configura a constante PLAYER_MIN_Y
+PLAYER_MAX_Y = $D8                               ; Configura a constante PLAYER_MAX_Y
+update_player:                                   ; Define o ponto de entrada update_player
+    LDA player_alive                             ; Carrega o valor no acumulador
+    BNE update_living_player                     ; Desvia quando o resultado anterior nao e zero
+    LDA #$00                                     ; Carrega o valor no acumulador
+    STA player_moving                            ; Armazena o acumulador no destino
+    RTS                                          ; Retorna para a rotina chamadora
+update_living_player:                            ; Define o ponto de entrada update_living_player
+    LDA #$00                                     ; Carrega o valor no acumulador
+    STA player_moving                            ; Armazena o acumulador no destino
+check_right:                                     ; Define o ponto de entrada check_right
+    LDA controller1                              ; Carrega o valor no acumulador
+    AND #%00000001                               ; Aplica uma mascara de bits ao acumulador
+    BEQ check_left                               ; Desvia quando o resultado anterior e zero
+    LDA #$00                                     ; Carrega o valor no acumulador
+    STA player_direction                         ; Armazena o acumulador no destino
+    LDA player_x                                 ; Carrega o valor no acumulador
+    CMP #PLAYER_MAX_X                            ; Compara o acumulador com o operando
+    BCS check_left                               ; Desvia quando o carry esta ativo
+    INC player_x                                 ; Incrementa o valor armazenado
+    JSR check_fence_collision                    ; Executa a rotina indicada
+    LDA collision                                ; Carrega o valor no acumulador
+    BNE undo_move_right                          ; Desvia quando o resultado anterior nao e zero
+    LDA #$01                                     ; Carrega o valor no acumulador
+    STA player_moving                            ; Armazena o acumulador no destino
+    JMP check_left                               ; Continua a execucao no rotulo indicado
+undo_move_right:                                 ; Define o ponto de entrada undo_move_right
+    DEC player_x                                 ; Decrementa o valor armazenado
+    JMP check_left                               ; Continua a execucao no rotulo indicado
+check_left:                                      ; Define o ponto de entrada check_left
+    LDA controller1                              ; Carrega o valor no acumulador
+    AND #%00000010                               ; Aplica uma mascara de bits ao acumulador
+    BEQ check_down                               ; Desvia quando o resultado anterior e zero
+    LDA #$01                                     ; Carrega o valor no acumulador
+    STA player_direction                         ; Armazena o acumulador no destino
+    LDA player_x                                 ; Carrega o valor no acumulador
+    CMP #PLAYER_MIN_X                            ; Compara o acumulador com o operando
+    BEQ check_down                               ; Desvia quando o resultado anterior e zero
+    DEC player_x                                 ; Decrementa o valor armazenado
+    JSR check_fence_collision                    ; Executa a rotina indicada
+    LDA collision                                ; Carrega o valor no acumulador
+    BNE undo_move_left                           ; Desvia quando o resultado anterior nao e zero
+    LDA #$01                                     ; Carrega o valor no acumulador
+    STA player_moving                            ; Armazena o acumulador no destino
+    JMP check_down                               ; Continua a execucao no rotulo indicado
+undo_move_left:                                  ; Define o ponto de entrada undo_move_left
+    INC player_x                                 ; Incrementa o valor armazenado
+    JMP check_down                               ; Continua a execucao no rotulo indicado
+check_down:                                      ; Define o ponto de entrada check_down
+    LDA controller1                              ; Carrega o valor no acumulador
+    AND #%00000100                               ; Aplica uma mascara de bits ao acumulador
+    BEQ check_up                                 ; Desvia quando o resultado anterior e zero
+    LDA player_y                                 ; Carrega o valor no acumulador
+    CMP #PLAYER_MAX_Y                            ; Compara o acumulador com o operando
+    BCS check_up                                 ; Desvia quando o carry esta ativo
+    INC player_y                                 ; Incrementa o valor armazenado
+    JSR check_fence_collision                    ; Executa a rotina indicada
+    LDA collision                                ; Carrega o valor no acumulador
+    BNE undo_move_down                           ; Desvia quando o resultado anterior nao e zero
+    LDA #$01                                     ; Carrega o valor no acumulador
+    STA player_moving                            ; Armazena o acumulador no destino
+    JMP check_up                                 ; Continua a execucao no rotulo indicado
+undo_move_down:                                  ; Define o ponto de entrada undo_move_down
+    DEC player_y                                 ; Decrementa o valor armazenado
+    JMP check_up                                 ; Continua a execucao no rotulo indicado
+check_up:                                        ; Define o ponto de entrada check_up
+    LDA controller1                              ; Carrega o valor no acumulador
+    AND #%00001000                               ; Aplica uma mascara de bits ao acumulador
+    BEQ update_player_done                       ; Desvia quando o resultado anterior e zero
+    LDA player_y                                 ; Carrega o valor no acumulador
+    CMP #PLAYER_MIN_Y                            ; Compara o acumulador com o operando
+    BEQ update_player_done                       ; Desvia quando o resultado anterior e zero
+    DEC player_y                                 ; Decrementa o valor armazenado
+    JSR check_fence_collision                    ; Executa a rotina indicada
+    LDA collision                                ; Carrega o valor no acumulador
+    BNE undo_move_up                             ; Desvia quando o resultado anterior nao e zero
+    LDA #$01                                     ; Carrega o valor no acumulador
+    STA player_moving                            ; Armazena o acumulador no destino
+    JMP update_player_done                       ; Continua a execucao no rotulo indicado
+undo_move_up:                                    ; Define o ponto de entrada undo_move_up
+    INC player_y                                 ; Incrementa o valor armazenado
+update_player_done:                              ; Define o ponto de entrada update_player_done
+    RTS                                          ; Retorna para a rotina chamadora
+update_player_animation:                         ; Define o ponto de entrada update_player_animation
+    LDA player_alive                             ; Carrega o valor no acumulador
+    BNE update_living_player_animation           ; Desvia quando o resultado anterior nao e zero
+    RTS                                          ; Retorna para a rotina chamadora
+update_living_player_animation:                  ; Define o ponto de entrada update_living_player_animation
+    LDA player_moving                            ; Carrega o valor no acumulador
+    BNE player_is_moving                         ; Desvia quando o resultado anterior nao e zero
+player_is_stopped:                               ; Define o ponto de entrada player_is_stopped
+    LDA #$00                                     ; Carrega o valor no acumulador
+    STA anim_counter                             ; Armazena o acumulador no destino
+    STA anim_frame                               ; Armazena o acumulador no destino
+    RTS                                          ; Retorna para a rotina chamadora
+player_is_moving:                                ; Define o ponto de entrada player_is_moving
+    INC anim_counter                             ; Incrementa o valor armazenado
+    LDA anim_counter                             ; Carrega o valor no acumulador
+    CMP #$08                                     ; Compara o acumulador com o operando
+    BCC animation_done                           ; Desvia quando o carry esta limpo
+    LDA #$00                                     ; Carrega o valor no acumulador
+    STA anim_counter                             ; Armazena o acumulador no destino
+    INC anim_frame                               ; Incrementa o valor armazenado
+    LDA anim_frame                               ; Carrega o valor no acumulador
+    CMP #$02                                     ; Compara o acumulador com o operando
+    BCC animation_done                           ; Desvia quando o carry esta limpo
+    LDA #$00                                     ; Carrega o valor no acumulador
+    STA anim_frame                               ; Armazena o acumulador no destino
+animation_done:                                  ; Define o ponto de entrada animation_done
+    RTS                                          ; Retorna para a rotina chamadora
